@@ -10,6 +10,7 @@ JobManager (master)
 * HA_ZOO_URL
 * HA_ZOO_PATH_ROOT
 * HA_CLUSTER_ID
+* MODE (legacy|new)
 
 
     docker run -d --rm \
@@ -18,6 +19,7 @@ JobManager (master)
         -e "HA_ZOO_URL=192.168.1.67:2181" \
         -e "HA_ZOO_PATH_ROOT=/flink" \
         -e "HA_CLUSTER_ID=/cluster_one" \
+        -e "MODE=legacy" \
         s1rc0/docker-flink:1.6.2-HA-alpine jobmanager
         
         
@@ -27,6 +29,7 @@ TaskManager (worker)
 * HA_ZOO_URL
 * HA_ZOO_PATH_ROOT
 * HA_CLUSTER_ID
+* MODE
 
 
     docker run -d --rm \
@@ -35,6 +38,7 @@ TaskManager (worker)
         -e "HA_ZOO_URL=192.168.1.67:2181" \
         -e "HA_ZOO_PATH_ROOT=/flink" \
         -e "HA_CLUSTER_ID=/cluster_one" \
+        -e "MODE=legacy" \
         s1rc0/docker-flink:1.6.2-HA-alpine taskmanager
 
 
