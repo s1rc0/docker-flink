@@ -62,6 +62,21 @@ RUN set -ex; \
   \
   apk del .build-deps; \
   \
+  wget -nv -O lib/log4j-over-slf4j-1.7.7.jar "https://search.maven.org/remotecontent?filepath=org/slf4j/log4j-over-slf4j/1.7.7/log4j-over-slf4j-1.7.7.jar"; \
+  wget -nv -O lib/logback-classic-1.1.3.jar "https://search.maven.org/remotecontent?filepath=ch/qos/logback/logback-classic/1.1.3/logback-classic-1.1.3.jar"; \
+  wget -nv -O lib/logback-core-1.1.3.jar "https://search.maven.org/remotecontent?filepath=com/hynnet/logback-core/1.1.3/logback-core-1.1.3.jar"; \
+  rm -rf lib/log4j-1.2.17.jar; \
+  rm -rf lib/slf4j-log4j12-1.7.7.jar; \
+  mv opt/flink-queryable-state-runtime_2.11-1.6.2.jar lib/; \
+  mv opt/flink-metrics-graphite-1.6.2.jar lib/; \
+  rm -rf opt/flink-ml_2.11-1.6.2.jar; \
+  rm -rf opt/flink-s3-fs-hadoop-1.6.2.jar; \
+  rm -rf opt/flink-s3-fs-presto-1.6.2.jar; \
+  rm -rf opt/flink-sql-client-1.6.2.jar; \
+  rm -rf opt/flink-streaming-python_2.11-1.6.2.jar; \
+  rm -rf opt/flink-swift-fs-hadoop-1.6.2.jar; \
+  rm -rf opt/flink-table_2.11-1.6.2.jar; \
+  \
   chown -R flink:flink .;
 
 # Configure container

@@ -1,7 +1,29 @@
 docker-flink
 ============
 
+Docker example (HA mode)
+------------------------
+Env Vars
+
+JobManager (master)
+* JOB_MANAGER_RPC_ADDRESS  
+
+TaskManager (worker)
+* JOB_MANAGER_RPC_ADDRESS
+* TASK_MANAGER_NUMBER_OF_TASK_SLOTS
+
+
+    docker run --rm \
+        --het=host \
+        -e "JOB_MANAGER_RPC_ADDRESS=192.168.1.52" \
+        -e "HA_ZOO_URL=192.168.1.67:2181" \
+        -e "HA_ZOO_PATH_ROOT=/flink" \
+        -e "HA_CLUSTER_ID=/cluster_one" \
+        s1rc0/docker-flink:latest jobmanager
+
+
 Docker packaging for Apache Flink
+---------------------------------
 
 Use `add-version.sh` to rebuild the Dockerfiles and all variants for a
 particular Flink release release. Before running this, you must first delete
