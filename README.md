@@ -18,18 +18,24 @@ JobManager (master)
         -e "HA_ZOO_URL=192.168.1.67:2181" \
         -e "HA_ZOO_PATH_ROOT=/flink" \
         -e "HA_CLUSTER_ID=/cluster_one" \
-        s1rc0/docker-flink:latest jobmanager
+        s1rc0/docker-flink:1.6.2-HA-alpine jobmanager
         
         
 TaskManager (worker)
 * JOB_MANAGER_RPC_ADDRESS
 * TASK_MANAGER_NUMBER_OF_TASK_SLOTS
+* HA_ZOO_URL
+* HA_ZOO_PATH_ROOT
+* HA_CLUSTER_ID
 
 
-    docker run --rm \
+    docker run -d --rm \
         --network=host  \
-        -e "JOB_MANAGER_RPC_ADDRESS=192.168.1.52" \
-        s1rc0/docker-flink:latest taskmanager
+        -e "JOB_MANAGER_RPC_ADDRESS=1.1.1.1" \
+        -e "HA_ZOO_URL=192.168.1.67:2181" \
+        -e "HA_ZOO_PATH_ROOT=/flink" \
+        -e "HA_CLUSTER_ID=/cluster_one" \
+        s1rc0/docker-flink:1.6.2-HA-alpine taskmanager
 
 
 
