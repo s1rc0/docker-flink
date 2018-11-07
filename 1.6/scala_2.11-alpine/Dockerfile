@@ -65,6 +65,8 @@ RUN set -ex; \
   wget -nv -O lib/log4j-over-slf4j-1.7.7.jar "https://search.maven.org/remotecontent?filepath=org/slf4j/log4j-over-slf4j/1.7.7/log4j-over-slf4j-1.7.7.jar"; \
   wget -nv -O lib/logback-classic-1.1.3.jar "https://search.maven.org/remotecontent?filepath=ch/qos/logback/logback-classic/1.1.3/logback-classic-1.1.3.jar"; \
   wget -nv -O lib/logback-core-1.1.3.jar "https://search.maven.org/remotecontent?filepath=com/hynnet/logback-core/1.1.3/logback-core-1.1.3.jar"; \
+  wget -nv -O lib/mariadb-java-client-1.5.9.jar "https://search.maven.org/remotecontent?filepath=org/mariadb/jdbc/mariadb-java-client/1.5.9/mariadb-java-client-1.5.9.jar"; \
+  wget -nv -O lib/h2-1.4.197.jar "https://search.maven.org/remotecontent?filepath=com/h2database/h2/1.4.197/h2-1.4.197.jar"; \
   rm -rf lib/log4j-1.2.17.jar; \
   rm -rf lib/slf4j-log4j12-1.7.7.jar; \
   mv opt/flink-queryable-state-runtime_2.11-1.6.2.jar lib/; \
