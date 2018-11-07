@@ -1,5 +1,3 @@
-#!/bin/sh
-
 ###############################################################################
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
@@ -18,58 +16,73 @@
 # limitations under the License.
 ###############################################################################
 
-# If unspecified, the hostname of the container is taken as the JobManager address
-JOB_MANAGER_RPC_ADDRESS=${JOB_MANAGER_RPC_ADDRESS:-$(hostname -f)}
+FROM openjdk:8-jre-alpine
 
-drop_privs_cmd() {
-    if [ -x /sbin/su-exec ]; then
-        # Alpine
-        echo su-exec
-    else
-        # Others
-        echo gosu
-    fi
-}
+# Install dependencies, bash and su-exec for easy step-down from root
+RUN apk add --no-cache bash libc6-compat snappy 'su-exec>=0.2'
 
-if [ "$1" = "help" ]; then
-    echo "Usage: $(basename "$0") (jobmanager|taskmanager|help)"
-    exit 0
-elif [ "$1" = "jobmanager" ]; then
-    shift 1
-    echo "Starting Job Manager"
+# Configure Flink version
+ENV FLINK_VERSION=1.6.2 \
+    HADOOP_SCALA_VARIANT=scala_2.11
 
-    sed -i -e "s/jobmanager.rpc.address: localhost/jobmanager.rpc.address: ${JOB_MANAGER_RPC_ADDRESS}/g" "$FLINK_HOME/conf/flink-conf.yaml"
-    # Change HA options
-    sed -i -e "s/# high-availability: zookeeper/high-availability: zookeeper/g" "$FLINK_HOME/conf/flink-conf.yaml"
-    sed -i -e "s/# high-availability.storageDir: hdfs:\/\/\/flink\/ha\//high-availability.storageDir: file:\/\/\/tmp\/storageDir/g" "$FLINK_HOME/conf/flink-conf.yaml"
-    sed -i -e "s/# high-availability.zookeeper.quorum: localhost:2181/high-availability.zookeeper.quorum: ${HA_ZOO_URL}/g" "$FLINK_HOME/conf/flink-conf.yaml"
-    echo "high-availability.zookeeper.path.root: ${HA_ZOO_PATH_ROOT}" >> "$FLINK_HOME/conf/flink-conf.yaml"
-    echo "high-availability.cluster-id: ${HA_CLUSTER_ID}" >> "$FLINK_HOME/conf/flink-conf.yaml"
+# Prepare environment
+ENV FLINK_HOME=/opt/flink
+ENV PATH=$FLINK_HOME/bin:$PATH
+RUN addgroup -S -g 9999 flink && \
+    adduser -D -S -H -u 9999 -G flink -h $FLINK_HOME flink
+WORKDIR $FLINK_HOME
 
-    echo "blob.server.port: 6124" >> "$FLINK_HOME/conf/flink-conf.yaml"
-    echo "query.server.port: 6125" >> "$FLINK_HOME/conf/flink-conf.yaml"
-    echo "mode: ${MODE}" >> "$FLINK_HOME/conf/flink-conf.yaml"
-    echo "config file: " && grep '^[^\n#]' "$FLINK_HOME/conf/flink-conf.yaml"
-    exec $(drop_privs_cmd) flink "$FLINK_HOME/bin/jobmanager.sh" start-foreground ${JOB_MANAGER_RPC_ADDRESS} ${FLINK_WEBUIPORT:-8081} "$@"
-elif [ "$1" = "taskmanager" ]; then
-    TASK_MANAGER_NUMBER_OF_TASK_SLOTS=${TASK_MANAGER_NUMBER_OF_TASK_SLOTS:-$(grep -c ^processor /proc/cpuinfo)}
+ENV FLINK_URL_FILE_PATH=flink/flink-${FLINK_VERSION}/flink-${FLINK_VERSION}-bin-${HADOOP_SCALA_VARIANT}.tgz
+# Not all mirrors have the .asc files
+ENV FLINK_TGZ_URL=https://www.apache.org/dyn/closer.cgi?action=download&filename=${FLINK_URL_FILE_PATH} \
+    FLINK_ASC_URL=https://www.apache.org/dist/${FLINK_URL_FILE_PATH}.asc
 
-    sed -i -e "s/jobmanager.rpc.address: localhost/jobmanager.rpc.address: ${JOB_MANAGER_RPC_ADDRESS}/g" "$FLINK_HOME/conf/flink-conf.yaml"
+# For GPG verification instead of relying on key servers
+COPY KEYS /KEYS
 
-    # Change HA options
-    sed -i -e "s/# high-availability: zookeeper/high-availability: zookeeper/g" "$FLINK_HOME/conf/flink-conf.yaml"
-    sed -i -e "s/# high-availability.storageDir: hdfs:\/\/\/flink\/ha\//high-availability.storageDir: file:\/\/\/tmp\/storageDir/g" "$FLINK_HOME/conf/flink-conf.yaml"
-    sed -i -e "s/# high-availability.zookeeper.quorum: localhost:2181/high-availability.zookeeper.quorum: ${HA_ZOO_URL}/g" "$FLINK_HOME/conf/flink-conf.yaml"
-    echo "high-availability.zookeeper.path.root: ${HA_ZOO_PATH_ROOT}" >> "$FLINK_HOME/conf/flink-conf.yaml"
-    echo "high-availability.cluster-id: ${HA_CLUSTER_ID}" >> "$FLINK_HOME/conf/flink-conf.yaml"
+# Install Flink
+RUN set -ex; \
+  apk add --no-cache --virtual .build-deps \
+    ca-certificates \
+    gnupg \
+    openssl \
+    tar \
+  ; \
+  \
+  wget -nv -O flink.tgz "$FLINK_TGZ_URL"; \
+  wget -nv -O flink.tgz.asc "$FLINK_ASC_URL"; \
+  \
+  export GNUPGHOME="$(mktemp -d)"; \
+  gpg --import /KEYS; \
+  gpg --batch --verify flink.tgz.asc flink.tgz; \
+  rm -rf "$GNUPGHOME" flink.tgz.asc; \
+  \
+  tar -xf flink.tgz --strip-components=1; \
+  rm flink.tgz; \
+  \
+  apk del .build-deps; \
+  \
+  wget -nv -O lib/log4j-over-slf4j-1.7.7.jar "https://search.maven.org/remotecontent?filepath=org/slf4j/log4j-over-slf4j/1.7.7/log4j-over-slf4j-1.7.7.jar"; \
+  wget -nv -O lib/logback-classic-1.1.3.jar "https://search.maven.org/remotecontent?filepath=ch/qos/logback/logback-classic/1.1.3/logback-classic-1.1.3.jar"; \
+  wget -nv -O lib/logback-core-1.1.3.jar "https://search.maven.org/remotecontent?filepath=com/hynnet/logback-core/1.1.3/logback-core-1.1.3.jar"; \
+  wget -nv -O lib/mariadb-java-client-1.5.9.jar "https://search.maven.org/remotecontent?filepath=org/mariadb/jdbc/mariadb-java-client/1.5.9/mariadb-java-client-1.5.9.jar"; \
+  wget -nv -O lib/h2-1.4.197.jar "https://search.maven.org/remotecontent?filepath=com/h2database/h2/1.4.197/h2-1.4.197.jar"; \
+  rm -rf lib/log4j-1.2.17.jar; \
+  rm -rf lib/slf4j-log4j12-1.7.7.jar; \
+  mv opt/flink-queryable-state-runtime_2.11-1.6.2.jar lib/; \
+  mv opt/flink-metrics-graphite-1.6.2.jar lib/; \
+  rm -rf opt/flink-ml_2.11-1.6.2.jar; \
+  rm -rf opt/flink-s3-fs-hadoop-1.6.2.jar; \
+  rm -rf opt/flink-s3-fs-presto-1.6.2.jar; \
+  rm -rf opt/flink-sql-client-1.6.2.jar; \
+  rm -rf opt/flink-streaming-python_2.11-1.6.2.jar; \
+  rm -rf opt/flink-swift-fs-hadoop-1.6.2.jar; \
+  rm -rf opt/flink-table_2.11-1.6.2.jar; \
+  \
+  chown -R flink:flink .;
 
-    sed -i -e "s/taskmanager.numberOfTaskSlots: 1/taskmanager.numberOfTaskSlots: $TASK_MANAGER_NUMBER_OF_TASK_SLOTS/g" "$FLINK_HOME/conf/flink-conf.yaml"
-    echo "blob.server.port: 6124" >> "$FLINK_HOME/conf/flink-conf.yaml"
-    echo "query.server.port: 6125" >> "$FLINK_HOME/conf/flink-conf.yaml"
-    echo "mode: ${MODE}" >> "$FLINK_HOME/conf/flink-conf.yaml"
-    echo "Starting Task Manager"
-    echo "config file: " && grep '^[^\n#]' "$FLINK_HOME/conf/flink-conf.yaml"
-    exec $(drop_privs_cmd) flink "$FLINK_HOME/bin/taskmanager.sh" start-foreground
-fi
-
-exec "$@"
+# Configure container
+COPY docker-entrypoint.sh /
+ENTRYPOINT ["/docker-entrypoint.sh"]
+EXPOSE 6123 8081
+CMD ["help"]
